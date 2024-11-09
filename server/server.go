@@ -25,6 +25,7 @@ var (
 	statusMutex     sync.Mutex
 	jobStarted      = false
 	jobStartedMutex sync.Mutex
+	webhookURL      string
 )
 
 // statusHandler is the API to get the status of translation job
@@ -63,8 +64,27 @@ func startJobCompletionTimer() {
 	}()
 }
 
+// webhookRegisterHandler allows the client to register a webhook URL
+func webhookRegisterHandler(w http.ResponseWriter, r *http.Request) {
+	type webhookRequest struct {
+		URL string `json:"url"`
+	}
+
+	var webhookReq webhookRequest
+	err := json.NewDecoder(r.Body).Decode(&webhookReq)
+	if err != nil {
+		http.Error(w, "Invalid webhook request", http.StatusBadRequest)
+		return
+	}
+
+	webhookURL = webhookReq.URL
+	log.Printf("Registered webhook URL: %s\n", webhookURL)
+	w.WriteHeader(http.StatusOK)
+}
+
 func main() {
 	http.HandleFunc("/status", statusHandler)
+	http.HandleFunc("/register-webhook", webhookRegisterHandler)
 	log.Println("Server is starting")
 	// Server starts listening on port 8080
 	log.Fatal(http.ListenAndServe(":8080", nil))
