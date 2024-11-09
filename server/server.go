@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"log"
 	"math/rand/v2"
@@ -12,6 +13,7 @@ import (
 const (
 	Pending   = "pending"
 	Completed = "completed"
+	Error     = "error"
 	MinDelay  = 5
 	MaxDelay  = 15
 )
@@ -61,6 +63,9 @@ func startJobCompletionTimer() {
 
 		jobStatus = Completed
 		log.Println("Job completed")
+
+		// Trigger the webhook notification
+		notifyWebhook()
 	}()
 }
 
@@ -80,6 +85,31 @@ func webhookRegisterHandler(w http.ResponseWriter, r *http.Request) {
 	webhookURL = webhookReq.URL
 	log.Printf("Registered webhook URL: %s\n", webhookURL)
 	w.WriteHeader(http.StatusOK)
+}
+
+// notifyWebhook sends a notification to the registered webhook URL
+func notifyWebhook() {
+	if webhookURL == "" {
+		log.Println("No webhook URL registered")
+		return
+	}
+
+	data := map[string]string{"status": "completed"}
+	jsonData, _ := json.Marshal(data)
+
+	resp, err := http.Post(webhookURL, "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		log.Printf("Failed to notify webhook: %v\n", err)
+		return
+	}
+
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log.Printf("Error closing response body: %v\n", err)
+		}
+	}()
+
+	log.Printf("Webhook notification sent, response status: %s\n", resp.Status)
 }
 
 func main() {
