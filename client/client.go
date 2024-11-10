@@ -24,6 +24,7 @@ func NewClient(baseURL, webhookPort string) *Client {
 	return &Client{
 		baseURL:     baseURL,
 		webhookPort: webhookPort,
+		statusChan:  make(chan string, 1),
 	}
 }
 
